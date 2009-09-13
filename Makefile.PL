@@ -2,6 +2,9 @@ use inc::Module::Install;
 name 'CGI-Application-PSGI';
 all_from 'lib/CGI/Application/PSGI.pm';
 
+requires 'CGI::Application';
+requires 'CGI::PSGI';
+
 build_requires 'Test::More';
 use_test_base;
 auto_include_deps;
