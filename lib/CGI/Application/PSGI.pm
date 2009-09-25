@@ -4,56 +4,45 @@ use strict;
 use 5.008_001;
 our $VERSION = '0.01';
 
+use base qw( CGI::Application );
 use CGI::PSGI;
 
-sub run {
-	my $class = shift;
-	my $self = shift;
-	my $q = $self->query();
+sub cgiapp_init {
+    my $self = shift;
+    my($env) = @_;
 
-	my $rm_param = $self->mode_param();
-
-	my $rm = $self->__get_runmode($rm_param);
-
-	# Set get_current_runmode() for access by user later
-	$self->{__CURRENT_RUNMODE} = $rm;
-
-	# Allow prerun_mode to be changed
-	delete($self->{__PRERUN_MODE_LOCKED});
-
-	# Call PRE-RUN hook, now that we know the run mode
-	# This hook can be used to provide run mode specific behaviors
-	# before the run mode actually runs.
- 	$self->call_hook('prerun', $rm);
-
-	# Lock prerun_mode from being changed after cgiapp_prerun()
-	$self->{__PRERUN_MODE_LOCKED} = 1;
-
-	# If prerun_mode has been set, use it!
-	my $prerun_mode = $self->prerun_mode();
-	if (length($prerun_mode)) {
-		$rm = $prerun_mode;
-		$self->{__CURRENT_RUNMODE} = $rm;
-	}
-
-	# Process run mode!
-	my $body = $self->__get_body($rm);
-
-	# Support scalar-ref for body return
-	$body = $$body if ref $body eq 'SCALAR';
-
-	# Call cgiapp_postrun() hook
-	$self->call_hook('postrun', \$body);
-
-	# Set up HTTP headers
-	my($status, $headers) = $self->_send_headers();
-
-	# clean up operations
-	$self->call_hook('teardown');
-
-	return [ $status, $headers, [ $body ] ];
+    $self->{_psgi_env} = $env;
 }
 
+sub cgiapp_get_query {
+    my $self = shift;
+    CGI::PSGI->new($self->{_psgi_env});
+}
+
+sub _send_headers { '' }
+
+sub run {
+    my $self = shift;
+    $ENV{CGI_APP_RETURN_ONLY} = 1;
+    my $super = "SUPER::run";
+    my $body = $self->$super(@_);
+
+    my $q    = $self->query;
+    my $type = $self->header_type;
+
+    my @headers;
+    if ($type eq 'redirect') {
+        my %props = $self->header_props;
+        $props{'-location'} ||= delete $props{'-url'} || delete $props{'-uri'};
+        @headers = $q->psgi_header(-Status => 302, %props);
+    } elsif ($type eq 'header') {
+        @headers = $q->psgi_header($self->header_props);
+    } else {
+        Carp::croak("Invalid header_type '$type'");
+    }
+
+    return [ @headers, [ $body ] ];
+}
 
 1;
 __END__
@@ -70,23 +59,18 @@ CGI::Application::PSGI - PSGI Adapter for CGI::Application
 
   ### In WebApp.pm
   package WebApp;
-  use base qw(CGI::Application);
+  use base qw(CGI::Application::PSGI); # <- change this
 
-  # Nothing needs to be changed
+  # Nothing else needs to be changed
 
+  ### app.psgi
   use CGI::Application::PSGI;
   use WebApp;
 
   my $app = sub {
       my $env = shift;
-
-      my $webapp = WebApp->new;
-      local *ENV = $env;
-
-      CGI::Application::PSGI->run($webapp);
+      WebApp->new($env)->run;
   };
-
-  # run $app with a PSGI implementation
 
 =head1 DESCRIPTION
 

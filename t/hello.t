@@ -1,23 +1,30 @@
 use lib "t/lib";
 use Test::More;
+use Test::Requires qw(Plack::Loader);
+use Test::TCP;
+use LWP::UserAgent;
 
 use Hello;
 use CGI::Application::PSGI;
 
-my $app = sub { CGI::Application::PSGI->run(Hello->new, @_) };
+my $app = sub { Hello->new(@_)->run };
 
-# FIXME replace this with Plackup
-warn "http://localhost:8080/";
-my $impl = $ENV{PSGI_IMPL};
-if ($impl eq 'ServerSimple') {
-    require PSGIRef::Impl::ServerSimple;
-    my $server = PSGIRef::Impl::ServerSimple->new(8080);
-    $server->psgi_app($app);
-    $server->run;
-} elsif ($impl eq 'Mojo') {
-    require PSGIRef::Impl::Mojo;
-    require Mojo::Server::Daemon;
-    my $daemon = Mojo::Server::Daemon->new;
-    $daemon->port(8080);
-    PSGIRef::Impl::Mojo->start($daemon, $app);
-}
+test_tcp(
+    client => sub {
+        my $port = shift;
+        my $ua = LWP::UserAgent->new;
+        my $res = $ua->get("http://127.0.0.1:$port/?name=bar");
+        like $res->content, qr/Hello bar/;
+        like $res->content_type, qr/plain/;
+
+        $res = $ua->simple_request(HTTP::Request->new(GET => "http://127.0.0.1:$port/?rm=hello_redir"));
+        is $res->code, 302;
+        is $res->header('location'), '/foo';
+    },
+    server => sub {
+        my $port = shift;
+        Plack::Loader->auto(port => $port)->run($app);
+    },
+);
+
+done_testing;
