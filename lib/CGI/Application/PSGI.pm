@@ -74,7 +74,8 @@ CGI::Application::PSGI - PSGI Adapter for CGI::Application
 
 =head1 DESCRIPTION
 
-CGI::Application::PSGI is a runner to run existent CGI::Application web application as a PSGI application.
+CGI::Application::PSGI is a new CGI::Application subclass to run
+existent CGI::Application web application as a PSGI application.
 
 =head1 AUTHOR
 
