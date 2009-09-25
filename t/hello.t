@@ -17,6 +17,7 @@ test_tcp(
         my $ua = LWP::UserAgent->new;
         my $res = $ua->get("http://127.0.0.1:$port/?name=bar");
         like $res->content, qr/Hello bar/;
+        unlike $res->content, qr/Content-Type/, "No headers";
         like $res->content_type, qr/plain/;
 
         $res = $ua->post("http://127.0.0.1:$port/", { name => "baz" });
