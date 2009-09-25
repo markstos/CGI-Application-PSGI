@@ -4,39 +4,28 @@ use strict;
 use 5.008_001;
 our $VERSION = '0.01';
 
-use base qw( CGI::Application );
 use CGI::PSGI;
 
-sub cgiapp_init {
-    my $self = shift;
-    my($env) = @_;
-
-    $self->{_psgi_env} = $env;
-}
-
-sub cgiapp_get_query {
-    my $self = shift;
-    CGI::PSGI->new($self->{_psgi_env});
-}
-
-sub _send_headers { '' }
-
 sub run {
-    my $self = shift;
-    $ENV{CGI_APP_RETURN_ONLY} = 1;
-    my $super = "SUPER::run";
-    my $body = $self->$super(@_);
+    my($class, $app) = @_;
 
-    my $q    = $self->query;
-    my $type = $self->header_type;
+    # HACK: deprecate HTTP header generation
+    # -- CGI::Application should support some flag to turn this off cleanly
+    local *CGI::Application::_send_hedaders = sub {};
+    $ENV{CGI_APP_RETURN_ONLY} = 1;
+
+    my $body = $app->run;
+
+    my $q    = $app->query;
+    my $type = $app->header_type;
 
     my @headers;
     if ($type eq 'redirect') {
-        my %props = $self->header_props;
+        my %props = $app->header_props;
         $props{'-location'} ||= delete $props{'-url'} || delete $props{'-uri'};
         @headers = $q->psgi_header(-Status => 302, %props);
     } elsif ($type eq 'header') {
-        @headers = $q->psgi_header($self->header_props);
+        @headers = $q->psgi_header($app->header_props);
     } else {
         Carp::croak("Invalid header_type '$type'");
     }
@@ -59,23 +48,24 @@ CGI::Application::PSGI - PSGI Adapter for CGI::Application
 
   ### In WebApp.pm
   package WebApp;
-  use base qw(CGI::Application::PSGI); # <- change this
+  use base qw(CGI::Application);
 
-  # Nothing else needs to be changed
+  # Nothing needs to be changed
 
   ### app.psgi
   use CGI::Application::PSGI;
   use WebApp;
 
-  my $app = sub {
+  my $handler = sub {
       my $env = shift;
-      WebApp->new($env)->run;
+      my $app = WebApp->new({ QUERY => CGI::PSGI->new($env) });
+      CGI::Application::PSGI->run($app);
   };
 
 =head1 DESCRIPTION
 
-CGI::Application::PSGI is a new CGI::Application subclass to run
-existent CGI::Application web application as a PSGI application.
+CGI::Application::PSGI is a runner to run CGI::Application application
+as a PSGI application.
 
 =head1 AUTHOR
 

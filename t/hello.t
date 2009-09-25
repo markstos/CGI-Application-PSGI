@@ -6,7 +6,10 @@ use Test::TCP;
 use Hello;
 use CGI::Application::PSGI;
 
-my $app = sub { Hello->new(@_)->run };
+my $app = sub {
+    my $cgiapp = Hello->new({ QUERY => CGI::PSGI->new(shift) });
+    CGI::Application::PSGI->run($cgiapp);
+};
 
 test_tcp(
     client => sub {

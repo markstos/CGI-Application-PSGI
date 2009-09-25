@@ -1,5 +1,5 @@
 package Hello;
-use base qw(CGI::Application::PSGI);
+use base qw(CGI::Application);
 
 sub setup {
     my $self = shift;
