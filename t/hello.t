@@ -16,6 +16,10 @@ test_tcp(
         like $res->content, qr/Hello bar/;
         like $res->content_type, qr/plain/;
 
+        $res = $ua->post("http://127.0.0.1:$port/", { name => "baz" });
+        like $res->content, qr/Hello baz/;
+        like $res->content_type, qr/plain/;
+
         $res = $ua->simple_request(HTTP::Request->new(GET => "http://127.0.0.1:$port/?rm=hello_redir"));
         is $res->code, 302;
         is $res->header('location'), '/foo';
