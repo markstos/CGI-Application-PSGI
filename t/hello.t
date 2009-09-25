@@ -1,8 +1,7 @@
 use lib "t/lib";
 use Test::More;
-use Test::Requires qw(Plack::Loader);
+use Test::Requires qw(Plack::Loader LWP::UserAgent);
 use Test::TCP;
-use LWP::UserAgent;
 
 use Hello;
 use CGI::Application::PSGI;
