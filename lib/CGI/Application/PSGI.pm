@@ -9,11 +9,15 @@ use CGI::PSGI;
 sub run {
     my($class, $app) = @_;
 
-    # HACK: deprecate HTTP header generation
-    # -- CGI::Application should support some flag to turn this off cleanly
-    no warnings 'redefine';
-    local *CGI::Application::_send_headers = sub { '' };
     $ENV{CGI_APP_RETURN_ONLY} = 1;
+
+    # save and reset header_type in postrun hook
+    my $header_type;
+    $app->add_callback('postrun', sub {
+        my $self = shift;
+        $header_type = $self->header_type;
+        $self->header_type('none');
+    });
 
     my $body = $app->run;
 
@@ -21,14 +25,14 @@ sub run {
     my $type = $app->header_type;
 
     my @headers;
-    if ($type eq 'redirect') {
+    if ($header_type eq 'redirect') {
         my %props = $app->header_props;
         $props{'-location'} ||= delete $props{'-url'} || delete $props{'-uri'};
         @headers = $q->psgi_header(-Status => 302, %props);
-    } elsif ($type eq 'header') {
+    } elsif ($header_type eq 'header') {
         @headers = $q->psgi_header($app->header_props);
-    } else {
-        Carp::croak("Invalid header_type '$type'");
+    } elsif ($header_type ne 'none') {
+        Carp::croak("Invalid header_type '$header_type'");
     }
 
     return [ @headers, [ $body ] ];
