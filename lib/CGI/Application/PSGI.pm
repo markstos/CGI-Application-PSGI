@@ -11,11 +11,13 @@ sub run {
 
     # HACK: deprecate HTTP header generation
     # -- CGI::Application should support some flag to turn this off cleanly
-    no warnings 'redefine';
-    local *CGI::Application::_send_headers = sub { '' };
-    $ENV{CGI_APP_RETURN_ONLY} = 1;
+    my $body = do {
+        no warnings 'redefine';
+        local *CGI::Application::_send_headers = sub { '' };
+        $ENV{CGI_APP_RETURN_ONLY} = 1;
 
-    my $body = $app->run;
+        $app->run;
+    };
 
     my $q    = $app->query;
     my $type = $app->header_type;
