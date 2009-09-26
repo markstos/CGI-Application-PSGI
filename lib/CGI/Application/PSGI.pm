@@ -27,6 +27,8 @@ sub run {
         @headers = $q->psgi_header(-Status => 302, %props);
     } elsif ($type eq 'header') {
         @headers = $q->psgi_header($app->header_props);
+    } elsif ($type eq 'none') {
+        Carp::croak("header_type of 'none' is not support by CGI::Application::PSGI");
     } else {
         Carp::croak("Invalid header_type '$type'");
     }
