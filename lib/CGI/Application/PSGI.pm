@@ -20,7 +20,9 @@ sub run {
     });
 
     my $body = $app->run;
+
     my $q    = $app->query;
+    my $type = $app->header_type;
 
     my @headers;
     if ($header_type eq 'redirect') {
