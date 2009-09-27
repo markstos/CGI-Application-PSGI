@@ -14,7 +14,7 @@ sub run {
     my $body = do {
         no warnings 'redefine';
         local *CGI::Application::_send_headers = sub { '' };
-        $ENV{CGI_APP_RETURN_ONLY} = 1;
+        local $ENV{CGI_APP_RETURN_ONLY} = 1;
 
         $app->run;
     };
